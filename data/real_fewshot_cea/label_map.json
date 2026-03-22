@@ -1,0 +1,43 @@
+{
+  "input_xlsx": "C:\\Users\\Spc\\Desktop\\3.LSPR-code\\LSPR_code\\CEA_build\\Hill_Filtered_Paired_Spectra_20pct.xlsx",
+  "sheet": "Sheet1",
+  "representation": "delta",
+  "label_mode": "concentration",
+  "normalize": "minmax",
+  "num_samples": 168,
+  "num_points": 400,
+  "num_classes": 11,
+  "label_to_id": {
+    "0.5ng/ml": 0,
+    "1.0ng/ml": 1,
+    "10.0ng/ml": 2,
+    "100.0ng/ml": 3,
+    "18.0ng/ml": 4,
+    "2.0ng/ml": 5,
+    "3.0ng/ml": 6,
+    "30.0ng/ml": 7,
+    "40.0ng/ml": 8,
+    "5.0ng/ml": 9,
+    "7.0ng/ml": 10
+  },
+  "id_to_label": {
+    "0": "0.5ng/ml",
+    "1": "1.0ng/ml",
+    "2": "10.0ng/ml",
+    "3": "100.0ng/ml",
+    "4": "18.0ng/ml",
+    "5": "2.0ng/ml",
+    "6": "3.0ng/ml",
+    "7": "30.0ng/ml",
+    "8": "40.0ng/ml",
+    "9": "5.0ng/ml",
+    "10": "7.0ng/ml"
+  },
+  "source_wavelength_min": 460.16,
+  "source_wavelength_max": 799.32,
+  "target_wavelength_min": 400.0,
+  "target_wavelength_max": 800.0,
+  "target_points": 400,
+  "dropped_columns_with_nan": 0,
+  "dropped_incomplete_pairs": 0
+}
