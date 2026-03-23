@@ -1,1 +1,12 @@
-﻿data/pretrain_full/pretrain_spectra.npy
+data/pretrain_full/pretrain_spectra.npy
+
+# Python caches
+**/__pycache__/
+*.py[cod]
+
+# Temporary evaluation outputs
+outputs/_tmp_eval_*/
+outputs/fewshot_bundle_cea_v1/bundle_compare_extra.png
+
+# Local scratch notes
+**/chat.md

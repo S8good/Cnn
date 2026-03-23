@@ -169,6 +169,15 @@ def calc_scores(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
     }
 
 
+def calc_topk_acc(logits: torch.Tensor, y_true: torch.Tensor, k: int = 2) -> float:
+    if logits.ndim != 2 or y_true.ndim != 1:
+        return 0.0
+    k = max(1, min(int(k), int(logits.shape[1])))
+    topk = torch.topk(logits, k=k, dim=1).indices
+    hit = (topk == y_true.unsqueeze(1)).any(dim=1)
+    return float(hit.float().mean().item())
+
+
 def run_prototype_mode(
     support_emb: np.ndarray,
     support_y_raw: np.ndarray,
@@ -196,6 +205,7 @@ def run_prototype_mode(
     pred_raw = classes[pred_pos]
 
     scores = calc_scores(query_y_raw, pred_raw)
+    scores["top2_acc"] = calc_topk_acc(logits, query_y, k=2)
     scores["query_loss"] = float(loss)
     return scores, pred_raw
 
@@ -267,6 +277,7 @@ def run_linear_head_mode(
         pred_pos = torch.argmax(logits_q, dim=1).cpu().numpy()
     pred_raw = classes[pred_pos]
     scores = calc_scores(query_y_raw, pred_raw)
+    scores["top2_acc"] = calc_topk_acc(logits_q, y_q, k=2)
     scores["query_loss"] = q_loss
     return scores, history, pred_raw, head
 

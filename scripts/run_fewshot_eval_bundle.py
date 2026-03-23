@@ -1,4 +1,3 @@
-import argparse
 import csv
 import json
 import os
@@ -165,7 +164,7 @@ def parse_summary_csv(path: Path) -> Dict[str, float]:
         raise ValueError(f"summary_metrics.csv is empty: {path}")
     row = rows[0]
     out: Dict[str, float] = {}
-    for key in [
+    base_keys = [
         "k_shot",
         "episodes",
         "acc_mean",
@@ -178,8 +177,12 @@ def parse_summary_csv(path: Path) -> Dict[str, float]:
         "macro_recall_std",
         "query_loss_mean",
         "query_loss_std",
-    ]:
+    ]
+    for key in base_keys:
         out[key] = float(row[key])
+    for key in ["top2_acc_mean", "top2_acc_std", "mae_mean", "mae_std"]:
+        if key in row and str(row.get(key, "")).strip() != "":
+            out[key] = float(row[key])
     return out
 
 
@@ -236,6 +239,63 @@ def save_plot(path: Path, rows: List[Dict[str, object]]) -> None:
             all_ks = sorted(set(int(r["k_shot"]) for r in ok_rows))
             ax.set_xticks(all_ks)
         ax.set_ylim(0.0, 1.05)
+        ax.grid(alpha=0.25, linestyle="--")
+        ax.legend()
+
+    fig.tight_layout()
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def save_extra_plot(path: Path, rows: List[Dict[str, object]]) -> None:
+    import matplotlib.pyplot as plt
+
+    ok_rows = [r for r in rows if str(r.get("status", "")) == "ok"]
+    if not ok_rows:
+        return
+
+    has_top2 = any(str(r.get("top2_acc_mean", "")).strip() != "" for r in ok_rows)
+    has_mae = any(str(r.get("mae_mean", "")).strip() != "" for r in ok_rows)
+    if not has_top2 and not has_mae:
+        return
+
+    modes = []
+    for r in ok_rows:
+        m = str(r["mode"])
+        if m not in modes:
+            modes.append(m)
+
+    if has_mae:
+        fig, axes = plt.subplots(1, 2, figsize=(10, 4), dpi=140)
+        axes = list(axes)
+    else:
+        fig, ax = plt.subplots(1, 1, figsize=(6.2, 4), dpi=140)
+        axes = [ax]
+
+    metric_specs = []
+    if has_top2:
+        metric_specs.append(("top2_acc_mean", "top2_acc_std", "Top-2 Accuracy"))
+    if has_mae:
+        metric_specs.append(("mae_mean", "mae_std", "MAE (Concentration)"))
+
+    for ax, (mean_key, std_key, title) in zip(axes, metric_specs):
+        for mode in modes:
+            rs = [r for r in ok_rows if str(r["mode"]) == mode and str(r.get(mean_key, "")).strip() != ""]
+            if not rs:
+                continue
+            rs = sorted(rs, key=lambda x: int(x["k_shot"]))
+            ks = [int(x["k_shot"]) for x in rs]
+            means = [float(x[mean_key]) for x in rs]
+            stds = [float(x[std_key]) for x in rs]
+            ax.errorbar(ks, means, yerr=stds, marker="o", capsize=4, label=mode)
+        ax.set_title(title)
+        ax.set_xlabel("K-shot")
+        ax.set_ylabel("Score")
+        if ok_rows:
+            all_ks = sorted(set(int(r["k_shot"]) for r in ok_rows))
+            ax.set_xticks(all_ks)
+        if "Accuracy" in title:
+            ax.set_ylim(0.0, 1.05)
         ax.grid(alpha=0.25, linestyle="--")
         ax.legend()
 
@@ -331,6 +391,10 @@ def main() -> None:
                         "macro_recall_std": "",
                         "query_loss_mean": "",
                         "query_loss_std": "",
+                        "top2_acc_mean": "",
+                        "top2_acc_std": "",
+                        "mae_mean": "",
+                        "mae_std": "",
                         "error": "",
                     }
                 else:
@@ -354,6 +418,10 @@ def main() -> None:
                         "macro_recall_std": float(summary["macro_recall_std"]),
                         "query_loss_mean": float(summary["query_loss_mean"]),
                         "query_loss_std": float(summary["query_loss_std"]),
+                        "top2_acc_mean": float(summary.get("top2_acc_mean", "")) if "top2_acc_mean" in summary else "",
+                        "top2_acc_std": float(summary.get("top2_acc_std", "")) if "top2_acc_std" in summary else "",
+                        "mae_mean": float(summary.get("mae_mean", "")) if "mae_mean" in summary else "",
+                        "mae_std": float(summary.get("mae_std", "")) if "mae_std" in summary else "",
                         "error": "",
                     }
                 records.append(record)
@@ -378,6 +446,10 @@ def main() -> None:
                     "macro_recall_std": "",
                     "query_loss_mean": "",
                     "query_loss_std": "",
+                    "top2_acc_mean": "",
+                    "top2_acc_std": "",
+                    "mae_mean": "",
+                    "mae_std": "",
                     "error": msg,
                 }
                 records.append(record)
@@ -388,9 +460,11 @@ def main() -> None:
     summary_csv = run_dir / "bundle_summary.csv"
     summary_json = run_dir / "bundle_summary.json"
     compare_png = run_dir / "bundle_compare.png"
+    extra_png = run_dir / "bundle_compare_extra.png"
     save_csv(summary_csv, records)
     if not args.dry_run:
         save_plot(compare_png, records)
+        save_extra_plot(extra_png, records)
 
     payload = {
         "run_dir": str(run_dir),
@@ -405,6 +479,7 @@ def main() -> None:
             "bundle_summary_csv": str(summary_csv),
             "bundle_summary_json": str(summary_json),
             "bundle_compare_png": str(compare_png),
+            "bundle_compare_extra_png": str(extra_png),
             "runs_root": str(runs_root),
         },
     }
@@ -416,6 +491,7 @@ def main() -> None:
     print(f"  {summary_json}", flush=True)
     if not args.dry_run:
         print(f"  {compare_png}", flush=True)
+        print(f"  {extra_png}", flush=True)
     print(f"  run_count={len(records)} success={payload['num_success']} failures={payload['num_failures']}", flush=True)
 
 

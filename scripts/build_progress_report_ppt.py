@@ -87,69 +87,6 @@ def load_real_dataset() -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict[int, s
     return spectra, labels, wavelengths, id_to_label
 
 
-def build_pipeline_asset(path: Path) -> None:
-    fig, ax = plt.subplots(figsize=(14.2, 4.8), dpi=240)
-    ax.set_xlim(0, 100)
-    ax.set_ylim(0, 34)
-    ax.axis("off")
-
-    ax.add_patch(patches.Rectangle((0, 0), 100, 34, facecolor="#F8FAFD", edgecolor="none"))
-
-    stages = [
-        (3, 8, 20, 17, BLUE, "阶段 A  理论预训练", "Mie 光谱生成\n物理噪声增强\n1D-ResNet Encoder", "已实现"),
-        (28, 8, 20, 17, CYAN, "阶段 B  真实域适配", "成对光谱导入\nfew-shot 适配\n多 episode 评估", "已实现"),
-        (53, 8, 20, 17, ORANGE, "阶段 C  物理约束判定", "红移方向检查\n饱和边界约束\n传统峰值交叉验证", "待实现"),
-        (78, 8, 19, 17, NAVY, "阶段 D  工程化部署", "软件入口集成\n在线推理与日志\n自动报告闭环", "待实现"),
-    ]
-
-    for x, y, w, h, color, title, body, tag in stages:
-        ax.add_patch(
-            patches.FancyBboxPatch(
-                (x + 0.5, y - 0.5),
-                w,
-                h,
-                boxstyle="round,pad=0.7,rounding_size=2.0",
-                linewidth=0,
-                edgecolor="none",
-                facecolor="#E9EEF6",
-                alpha=0.5,
-            )
-        )
-        ax.add_patch(
-            patches.FancyBboxPatch(
-                (x, y),
-                w,
-                h,
-                boxstyle="round,pad=0.7,rounding_size=2.0",
-                linewidth=1.8,
-                edgecolor=color,
-                facecolor="white",
-            )
-        )
-        ax.text(x + 1.3, y + h - 2.8, title, fontsize=14.8, color=color, fontweight="bold", va="top")
-        ax.text(x + 1.3, y + 3.1, body, fontsize=11.6, color=TEXT_DARK, va="bottom", linespacing=1.5)
-        badge_color = GREEN if tag == "已实现" else ORANGE
-        ax.add_patch(
-            patches.FancyBboxPatch(
-                (x + w - 7.0, y + h - 4.3),
-                5.8,
-                2.1,
-                boxstyle="round,pad=0.3,rounding_size=0.8",
-                linewidth=0,
-                facecolor=badge_color,
-            )
-        )
-        ax.text(x + w - 4.1, y + h - 3.25, tag, fontsize=10.4, color="white", ha="center", va="center", fontweight="bold")
-
-    for x in [23, 48, 73]:
-        ax.annotate("", xy=(x + 3.7, 16.5), xytext=(x, 16.5), arrowprops=dict(arrowstyle="->", lw=2.2, color=TEXT_MUTED))
-
-    ax.text(2.2, 30.0, "模型闭环：理论预训练 -> 真实域 few-shot -> 物理约束 -> 软件部署", fontsize=17, color=TEXT_DARK, fontweight="bold")
-    ax.text(2.2, 26.9, "当前状态：A/B 已落地并完成实测；C/D 为下一阶段核心工作。", fontsize=12.2, color=TEXT_MUTED)
-    fig.savefig(path)
-    plt.close(fig)
-
-
 def build_pretrain_asset(path: Path, train_metrics: Dict) -> None:
     history = train_metrics["history"]
     epochs = np.asarray([int(x["epoch"]) for x in history], dtype=np.int64)
@@ -281,6 +218,189 @@ def build_fewshot_asset(path: Path, rows: List[Dict[str, str]]) -> None:
     plt.close(fig)
 
 
+def build_two_step_architecture_asset(path: Path) -> None:
+    fig, ax = plt.subplots(figsize=(13.6, 4.9), dpi=240)
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 40)
+    ax.axis("off")
+
+    ax.add_patch(patches.Rectangle((0, 0), 100, 40, facecolor="#F8FAFD", edgecolor="none"))
+
+    # Bottom foundation: Step 1
+    ax.add_patch(
+        patches.FancyBboxPatch(
+            (8, 7),
+            84,
+            11,
+            boxstyle="round,pad=0.8,rounding_size=2.2",
+            linewidth=2.0,
+            edgecolor=BLUE,
+            facecolor="#EDF4FD",
+        )
+    )
+    ax.text(12, 15.3, "Step 1  Meta-Baseline 特征预训练（底座）", fontsize=16.5, color=BLUE, fontweight="bold", va="center")
+    ax.text(
+        12,
+        11.2,
+        "理论光谱网格化 -> 物理噪声增强 -> Whole-classification 预训练 -> 保留 128 维 Encoder",
+        fontsize=11.6,
+        color=TEXT_DARK,
+        va="center",
+    )
+    ax.add_patch(
+        patches.FancyBboxPatch(
+            (81.5, 13.0),
+            8.2,
+            3.0,
+            boxstyle="round,pad=0.35,rounding_size=0.8",
+            linewidth=0,
+            facecolor=GREEN,
+        )
+    )
+    ax.text(85.6, 14.5, "已完成", fontsize=10.8, color="white", fontweight="bold", ha="center", va="center")
+
+    # Step 2 amplifier
+    ax.add_patch(
+        patches.FancyBboxPatch(
+            (26, 22),
+            48,
+            8,
+            boxstyle="round,pad=0.8,rounding_size=2.2",
+            linewidth=2.0,
+            edgecolor=ORANGE,
+            facecolor="#FFF6EC",
+        )
+    )
+    ax.text(30, 27.1, "Step 2  cGAN 稀缺数据扩增（放大器）", fontsize=15.2, color=ORANGE, fontweight="bold", va="center")
+    ax.text(30, 24.0, "聚焦低浓度 / LOD 附近 / 过渡区样本缺口，做受控条件生成与物理筛选", fontsize=11.2, color=TEXT_DARK, va="center")
+    ax.add_patch(
+        patches.FancyBboxPatch(
+            (66.0, 24.4),
+            6.0,
+            2.3,
+            boxstyle="round,pad=0.25,rounding_size=0.7",
+            linewidth=0,
+            facecolor=ORANGE,
+        )
+    )
+    ax.text(69.0, 25.55, "规划中", fontsize=9.8, color="white", fontweight="bold", ha="center", va="center")
+
+    # Top outcome
+    ax.add_patch(
+        patches.FancyBboxPatch(
+            (34, 33),
+            32,
+            3.5,
+            boxstyle="round,pad=0.4,rounding_size=1.4",
+            linewidth=1.6,
+            edgecolor=NAVY,
+            facecolor="white",
+        )
+    )
+    ax.text(50, 34.75, "目标：更稳的真实 few-shot 适配与更强的低浓度鲁棒性", fontsize=11.4, color=NAVY, fontweight="bold", ha="center", va="center")
+
+    ax.annotate("", xy=(50, 22), xytext=(50, 18), arrowprops=dict(arrowstyle="->", lw=2.2, color=TEXT_MUTED))
+    ax.annotate("", xy=(50, 33), xytext=(50, 30), arrowprops=dict(arrowstyle="->", lw=2.2, color=TEXT_MUTED))
+
+    ax.text(4, 36.5, "两步关系：先建立物理锚点，再按需放大低浓度脆弱区", fontsize=16.5, color=TEXT_DARK, fontweight="bold")
+    ax.text(4, 3.0, "没有 Step 1 的物理锚点，Step 2 只会生成“看起来像光谱”的伪数据。", fontsize=12.0, color=RED)
+
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def build_step1_pipeline_asset(path: Path) -> None:
+    fig, ax = plt.subplots(figsize=(14.2, 4.9), dpi=240)
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 26)
+    ax.axis("off")
+
+    ax.add_patch(patches.Rectangle((0, 0), 100, 26, facecolor="#F8FAFD", edgecolor="none"))
+
+    items = [
+        ("物理参数\n离散化", "粒径 / 折射率\n连续空间切网格", BLUE),
+        ("批量生成\n理论库", "Mie / FDTD\n完美无噪声光谱", CYAN),
+        ("物理噪声\n注入增强", "高斯噪声 / 基线漂移\n峰宽展宽", GREEN),
+        ("Whole-classification\n预训练", "用分类任务压榨\n表征学习能力", ORANGE),
+        ("弃用分类头\n保留 Encoder", "留下真正有价值的\n128 维表征空间", NAVY),
+    ]
+
+    x0 = 2.5
+    for idx, (title, body, color) in enumerate(items):
+        x = x0 + idx * 19.0
+        ax.add_patch(
+            patches.FancyBboxPatch(
+                (x, 7.0),
+                15.8,
+                11.4,
+                boxstyle="round,pad=0.55,rounding_size=1.6",
+                linewidth=1.8,
+                edgecolor=color,
+                facecolor="white",
+            )
+        )
+        ax.text(x + 1.0, 16.9, title, fontsize=12.8, color=color, fontweight="bold", va="top")
+        ax.text(x + 1.0, 8.8, body, fontsize=10.6, color=TEXT_DARK, va="bottom", linespacing=1.45)
+        if idx < len(items) - 1:
+            ax.annotate("", xy=(x + 18.4, 12.7), xytext=(x + 15.9, 12.7), arrowprops=dict(arrowstyle="->", lw=2.1, color=TEXT_MUTED))
+
+    ax.text(2.5, 22.2, "阶段一目标：逼迫模型学出稳定、抗干扰的光谱高维表征空间，而不是急于做最终检测。", fontsize=15.8, color=TEXT_DARK, fontweight="bold")
+    ax.text(2.5, 2.5, "本质：先学 physical manifold，再做真实域迁移。", fontsize=11.8, color=TEXT_MUTED)
+
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def build_step2_pipeline_asset(path: Path) -> None:
+    fig, ax = plt.subplots(figsize=(14.0, 4.9), dpi=240)
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 30)
+    ax.axis("off")
+
+    ax.add_patch(patches.Rectangle((0, 0), 100, 30, facecolor="#F8FAFD", edgecolor="none"))
+
+    items = [
+        (4, 9, 18, 11, BLUE, "1. 锁定稀缺区", "只针对低浓度 / LOD / 过渡区\n拒绝全范围盲目扩增"),
+        (27, 9, 20, 11, CYAN, "2. 构建条件输入", "基础谱形 + 目标条件\n而不是纯噪声乱生成"),
+        (52, 9, 18, 11, ORANGE, "3. 学习受控映射", "从已知状态到微弱状态\n保持物理连续性"),
+        (75, 9, 20, 11, GREEN, "4. 物理规则筛选", "峰位 / 峰宽 / 单调性通过后\n才允许进入训练库"),
+    ]
+
+    for i, (x, y, w, h, color, title, body) in enumerate(items):
+        ax.add_patch(
+            patches.FancyBboxPatch(
+                (x, y),
+                w,
+                h,
+                boxstyle="round,pad=0.6,rounding_size=1.8",
+                linewidth=1.8,
+                edgecolor=color,
+                facecolor="white",
+            )
+        )
+        ax.text(x + 1.1, y + h - 2.0, title, fontsize=13.3, color=color, fontweight="bold", va="top")
+        ax.text(x + 1.1, y + 2.0, body, fontsize=10.8, color=TEXT_DARK, va="bottom", linespacing=1.45)
+        if i < len(items) - 1:
+            ax.annotate("", xy=(x + w + 3.5, 14.5), xytext=(x + w + 0.4, 14.5), arrowprops=dict(arrowstyle="->", lw=2.1, color=TEXT_MUTED))
+
+    ax.add_patch(
+        patches.FancyBboxPatch(
+            (33.5, 22.7),
+            33.0,
+            3.1,
+            boxstyle="round,pad=0.35,rounding_size=0.9",
+            linewidth=0,
+            facecolor="#FCEDEE",
+        )
+    )
+    ax.text(50, 24.25, "边界提醒：cGAN 是“受控增强”，不是“凭空造谱”。", fontsize=11.6, color=RED, fontweight="bold", ha="center", va="center")
+
+    ax.text(4, 26.9, "阶段二目标：补齐最贵、最稀缺的低浓度样本缺口，稳住 few-shot 原型锚点。", fontsize=15.4, color=TEXT_DARK, fontweight="bold")
+
+    fig.savefig(path)
+    plt.close(fig)
+
+
 def generate_assets() -> Dict[str, Path]:
     setup_matplotlib()
     train_metrics = load_train_metrics()
@@ -288,14 +408,18 @@ def generate_assets() -> Dict[str, Path]:
     spectra, labels, wavelengths, id_to_label = load_real_dataset()
 
     assets = {
-        "pipeline": OUTPUT_ROOT / "pipeline_overview.png",
+        "architecture": OUTPUT_ROOT / "two_step_architecture.png",
+        "step1_pipeline": OUTPUT_ROOT / "step1_pipeline.png",
+        "step2_pipeline": OUTPUT_ROOT / "step2_pipeline.png",
         "pretrain": OUTPUT_ROOT / "pretrain_summary.png",
         "real_data": OUTPUT_ROOT / "real_data_overview.png",
         "fewshot": OUTPUT_ROOT / "fewshot_summary.png",
         "tsne": PROJECT_ROOT / "outputs" / "run_20260320_085725" / "tsne_validation.png",
     }
 
-    build_pipeline_asset(assets["pipeline"])
+    build_two_step_architecture_asset(assets["architecture"])
+    build_step1_pipeline_asset(assets["step1_pipeline"])
+    build_step2_pipeline_asset(assets["step2_pipeline"])
     build_pretrain_asset(assets["pretrain"], train_metrics)
     build_real_data_asset(assets["real_data"], spectra, labels, wavelengths, id_to_label)
     build_fewshot_asset(assets["fewshot"], fewshot_rows)
@@ -510,33 +634,83 @@ def add_content_slide(prs: Presentation, title: str, page_no: int):
     return slide
 
 
-def add_title_slide(prs: Presentation) -> None:
+def add_title_slide(prs: Presentation, assets: Dict[str, Path]) -> None:
     slide = prs.slides.add_slide(prs.slide_layouts[1])
-    add_text_card(slide, Cm(1.0), Cm(2.7), Cm(17.0), Cm(1.8), "汇报人：史鹏程", font_size=18, color=TEXT_MUTED, bold=True, line=None, radius=False)
+    add_text_card(slide, Cm(0.9), Cm(0.7), Cm(12.0), Cm(0.9), "LSPR 答辩汇报", font_size=9.8, color="FFFFFF", bold=True, align=PP_ALIGN.CENTER, fill=BLUE, line=BLUE)
     add_text_card(
         slide,
         Cm(1.0),
-        Cm(3.8),
-        Cm(27.5),
-        Cm(3.8),
-        "基于物理先验与 Few-shot 迁移的 LSPR 光谱智能分析\n模型建设进展汇报",
-        font_size=24,
+        Cm(2.8),
+        Cm(17.8),
+        Cm(3.5),
+        "融合物理先验与条件生成的少样本 LSPR 光谱分析架构",
+        font_size=25.5,
         color=TEXT_DARK,
         bold=True,
         line=None,
         radius=False,
     )
-    add_text_card(slide, Cm(1.0), Cm(8.5), Cm(12.0), Cm(1.6), "汇报日期：2026.03.20", font_size=13.5, color=TEXT_MUTED, line=None, radius=False)
     add_text_card(
         slide,
         Cm(1.0),
-        Cm(14.3),
-        Cm(28.5),
-        Cm(2.6),
-        "汇报目标：系统梳理模型“计划实现”与“已经实现”的边界，明确现阶段学术结论与下一阶段关键工作。",
-        font_size=14.3,
+        Cm(6.6),
+        Cm(16.0),
+        Cm(1.9),
+        "从理论预训练到极限数据扩增的深度学习策略",
+        font_size=15.5,
+        color=TEXT_MUTED,
+        bold=False,
+        line=None,
+        radius=False,
+    )
+    add_text_card(
+        slide,
+        Cm(1.0),
+        Cm(10.0),
+        Cm(8.8),
+        Cm(1.4),
+        "汇报人：史鹏程",
+        font_size=13.8,
+        color=TEXT_MUTED,
+        bold=True,
+        line=None,
+        radius=False,
+    )
+    add_text_card(
+        slide,
+        Cm(1.0),
+        Cm(11.2),
+        Cm(8.8),
+        Cm(1.2),
+        "日期：2026.03.22",
+        font_size=12.8,
+        color=TEXT_MUTED,
+        line=None,
+        radius=False,
+    )
+    add_text_card(
+        slide,
+        Cm(1.0),
+        Cm(14.4),
+        Cm(17.0),
+        Cm(2.2),
+        "答辩视角：先讲清“为什么必须先做物理底座”，\n再说明“为什么低浓度区需要条件生成放大器”。",
+        font_size=13.5,
         color=TEXT_DARK,
         fill="#ECF3FB",
+        line=BORDER,
+    )
+    add_picture(slide, assets["tsne"], Cm(19.6), Cm(2.6), Cm(11.1), Cm(11.1))
+    add_text_card(
+        slide,
+        Cm(19.8),
+        Cm(14.3),
+        Cm(10.7),
+        Cm(2.5),
+        "视觉锚点：预训练后的特征流形已经显现出结构化分簇，\n说明 128 维 Encoder 具备“物理感知”能力。",
+        font_size=12.0,
+        color=TEXT_DARK,
+        fill="#FFF7EE",
         line=BORDER,
     )
     add_footer(slide, 1)
@@ -546,200 +720,276 @@ def build_presentation(assets: Dict[str, Path]) -> None:
     prs = Presentation(str(PPT_TEMPLATE))
     remove_all_slides(prs)
 
-    add_title_slide(prs)
+    add_title_slide(prs, assets)
 
-    slide = add_content_slide(prs, "研究目标与科学问题", 2)
+    slide = add_content_slide(prs, "LSPR 深度学习应用的核心痛点", 2)
     add_bullets_card(
         slide,
         Cm(0.8),
         Cm(3.1),
-        Cm(10.3),
-        Cm(7.0),
-        "核心科学问题",
+        Cm(11.0),
+        Cm(6.0),
+        "核心矛盾",
         [
-            "低浓度真实信号弱，容易被噪声与芯片差异掩盖。",
-            "峰位、峰强、半高宽等特征强耦合，单变量难以定量。",
-            "真实标注样本规模小，难以直接训练深层网络。",
+            "真实 LSPR 光谱获取成本高、周期长，深度模型长期处于“数据饥饿”状态。",
+            "高浓度样本相对容易获得，低浓度 / 临界响应区样本最有价值却最稀缺。",
+            "直接端到端训练容易死记少量曲线，缺乏对峰位、峰宽、基线扰动规律的物理理解。",
         ],
-    )
-    add_bullets_card(
-        slide,
-        Cm(11.4),
-        Cm(3.1),
-        Cm(10.3),
-        Cm(7.0),
-        "建模策略",
-        [
-            "先用理论光谱和物理扰动训练可迁移 Encoder。",
-            "再用真实数据做 few-shot 适配与泛化评估。",
-            "最后引入物理规则与可信度约束并完成工程化。",
-        ],
-        fill="#F4FAF9",
     )
     add_text_card(
         slide,
-        Cm(22.1),
-        Cm(3.1),
-        Cm(9.9),
-        Cm(7.0),
-        "评价口径\n\nStage A：表征可分性与训练稳定性\nStage B：真实 few-shot query 表现\nStage C/D：物理一致性与可交付性",
-        font_size=13.6,
+        Cm(0.8),
+        Cm(9.6),
+        Cm(11.0),
+        Cm(4.2),
+        "方案引出\n\n我们需要一个两层架构：\n先建立物理常识底座，再对最稀缺的低浓度区做受控放大。",
+        font_size=14.0,
+        color=TEXT_DARK,
+        fill="#F4FAF9",
+        line=BORDER,
+    )
+    add_picture(slide, assets["real_data"], Cm(12.2), Cm(3.0), Cm(18.7), Cm(11.1))
+    add_text_card(
+        slide,
+        Cm(12.5),
+        Cm(14.2),
+        Cm(12.0),
+        Cm(1.1),
+        "实测数据证据：168 样本 / 11 类 / 400 采样点，且类别明显不均衡。",
+        font_size=11.8,
+        color="#FFFFFF",
+        bold=True,
+        align=PP_ALIGN.CENTER,
+        fill=BLUE,
+        line=BLUE,
+    )
+
+    slide = add_content_slide(prs, "两步递进式解决方案：底座与放大器", 3)
+    add_picture(slide, assets["architecture"], Cm(0.9), Cm(2.9), Cm(30.3), Cm(9.8))
+    add_text_card(
+        slide,
+        Cm(1.0),
+        Cm(13.1),
+        Cm(14.5),
+        Cm(2.4),
+        "Step 1（必须做）\nMeta-Baseline 特征预训练：建立 128 维物理表征空间。",
+        font_size=13.5,
+        color=TEXT_DARK,
+        fill="#ECF3FB",
+        line=BORDER,
+    )
+    add_text_card(
+        slide,
+        Cm(15.8),
+        Cm(13.1),
+        Cm(14.8),
+        Cm(2.4),
+        "Step 2（进阶做）\ncGAN 稀缺数据扩增：补足 LOD 附近最贵、最稀缺的样本缺口。",
+        font_size=13.5,
         color=TEXT_DARK,
         fill="#FFF7EE",
         line=BORDER,
     )
     add_text_card(
         slide,
-        Cm(0.8),
-        Cm(11.0),
-        Cm(31.2),
-        Cm(4.2),
-        "本汇报重点是“模型能力边界”而不是“单一指标高低”：要明确哪些工作已经实证成立，哪些仍处于待验证阶段。",
-        font_size=14.2,
-        color=TEXT_DARK,
-        fill="#ECF3FB",
-        line=BORDER,
-    )
-
-    slide = add_content_slide(prs, "模型闭环与技术路线", 3)
-    add_picture(slide, assets["pipeline"], Cm(0.9), Cm(3.0), Cm(30.4), Cm(11.0))
-    add_text_card(
-        slide,
         Cm(1.0),
-        Cm(14.6),
-        Cm(29.8),
-        Cm(2.1),
-        "闭环逻辑：先构建可解释表征，再完成真实域迁移，随后加入物理约束，最终形成可部署的软件推理链路。",
-        font_size=13.6,
+        Cm(15.9),
+        Cm(29.6),
+        Cm(1.5),
+        "当前项目状态：Step 1 与真实 few-shot 验证已完成；Step 2 尚未实现，但已被当前结果明确地“推出来”。",
+        font_size=12.6,
         color=TEXT_DARK,
         fill="#F7FAFD",
         line=BORDER,
     )
 
-    slide = add_content_slide(prs, "实现进度总览（表格）", 4)
-    add_progress_table(slide, Cm(0.8), Cm(3.0), Cm(30.8), Cm(12.4))
+    slide = add_content_slide(prs, "阶段一：基于理论光谱的物理感知预训练", 4)
+    add_picture(slide, assets["step1_pipeline"], Cm(0.9), Cm(3.0), Cm(30.3), Cm(8.6))
     add_text_card(
         slide,
-        Cm(0.8),
-        Cm(15.7),
-        Cm(30.8),
-        Cm(1.5),
-        "结论：当前已完成从理论预训练到真实 few-shot 评估的主干流程；物理约束层与工程交付层尚未完成。",
-        font_size=12.8,
+        Cm(1.0),
+        Cm(12.0),
+        Cm(10.5),
+        Cm(4.2),
+        "核心目标\n\n不急于做最终检测，而是先逼 encoder 学出稳定、抗干扰的高维表征空间。",
+        font_size=13.8,
         color=TEXT_DARK,
         fill="#ECF3FB",
         line=BORDER,
     )
-
-    slide = add_content_slide(prs, "阶段 A：理论预训练已完成", 5)
-    add_bullets_card(
-        slide,
-        Cm(0.8),
-        Cm(3.0),
-        Cm(10.0),
-        Cm(5.0),
-        "已实现内容",
-        [
-            "理论光谱生成与物理噪声增强流程已完成。",
-            "1D-ResNet 预训练流程稳定收敛。",
-            "可复用 Encoder 与可视化输出已形成。",
-        ],
-    )
     add_text_card(
         slide,
-        Cm(0.8),
-        Cm(8.4),
-        Cm(10.0),
-        Cm(3.8),
-        "关键结果\n\n最佳验证精度：98.91%\n最佳验证损失：0.062\n表征维度：128",
-        font_size=13.8,
+        Cm(11.9),
+        Cm(12.0),
+        Cm(9.0),
+        Cm(4.2),
+        "为什么是 Whole-classification\n\n表面上做分类，实质上是在压榨表征学习能力，为真实 few-shot 迁移做地基。",
+        font_size=13.2,
         color=TEXT_DARK,
         fill="#F4FAF9",
         line=BORDER,
     )
-    add_picture(slide, assets["pretrain"], Cm(11.1), Cm(3.0), Cm(10.2), Cm(5.5))
-    add_picture(slide, assets["tsne"], Cm(21.6), Cm(3.0), Cm(9.2), Cm(9.1))
     add_text_card(
         slide,
-        Cm(11.1),
-        Cm(8.9),
-        Cm(10.2),
-        Cm(3.3),
-        "解释：仿真域表现很强，说明表征学习成功；但真实域 few-shot 仍需独立评估，不能直接外推。",
-        font_size=12.5,
-        color=TEXT_MUTED,
+        Cm(21.4),
+        Cm(12.0),
+        Cm(9.6),
+        Cm(4.2),
+        "当前对应成果\n\nMie 理论光谱生成、物理噪声增强、1D-ResNet 预训练与 t-SNE 验证均已完成。",
+        font_size=13.0,
+        color=TEXT_DARK,
         fill="#FFF7EE",
         line=BORDER,
     )
 
-    slide = add_content_slide(prs, "阶段 B：真实数据接入与适配", 6)
-    add_bullets_card(
-        slide,
-        Cm(0.8),
-        Cm(3.0),
-        Cm(10.2),
-        Cm(6.6),
-        "已完成能力",
-        [
-            "真实光谱导入流程已支持 CSV 与成对光谱格式。",
-            "few-shot 适配支持 prototype 与 linear-head 两种模式。",
-            "多 K-shot、多 episode 评估流程已自动化。",
-            "单样本离线推理流程已可执行。",
-        ],
-    )
+    slide = add_content_slide(prs, "阶段一：从“死记曲线”到“理解物理流形”", 5)
+    add_picture(slide, assets["pretrain"], Cm(0.9), Cm(3.0), Cm(11.7), Cm(5.8))
+    add_picture(slide, assets["tsne"], Cm(13.0), Cm(3.0), Cm(17.8), Cm(8.6))
     add_text_card(
         slide,
-        Cm(0.8),
-        Cm(10.0),
-        Cm(10.2),
-        Cm(4.0),
-        "当前数据规模\n\n总样本数：168\n类别数：11\n每条光谱采样点：400\n类别分布明显不均衡",
+        Cm(1.0),
+        Cm(9.2),
+        Cm(11.5),
+        Cm(3.5),
+        "关键结果\n\n最佳验证精度：98.91%\n最佳验证损失：0.062\n表征维度：128",
         font_size=13.4,
         color=TEXT_DARK,
         fill="#F4FAF9",
         line=BORDER,
     )
-    add_picture(slide, assets["real_data"], Cm(11.4), Cm(3.0), Cm(19.5), Cm(11.0))
-
-    slide = add_content_slide(prs, "阶段 B：few-shot 实验结果", 7)
-    add_picture(slide, assets["fewshot"], Cm(0.9), Cm(3.0), Cm(18.8), Cm(10.9))
     add_bullets_card(
         slide,
-        Cm(20.0),
-        Cm(3.0),
-        Cm(11.0),
-        Cm(5.6),
-        "结果摘要",
+        Cm(1.0),
+        Cm(13.2),
+        Cm(14.5),
+        Cm(4.0),
+        "学术意义",
         [
-            "最佳 accuracy：prototype + k=1，约 26.7%。",
-            "最佳 macro-F1：prototype + k=1，约 20.4%。",
-            "linear-head 未稳定超过 prototype，说明支持集规模仍受限。",
-            "整体显著高于随机基线，但离部署可用仍有差距。",
+            "先学习 physical manifold，再做真实域迁移。",
+            "真实数据只需承担域适配，而不必从头教模型认识光谱。",
+            "清晰分簇说明嵌入空间已具有结构化物理表征能力。",
         ],
-        fill="#F7FAFD",
     )
     add_text_card(
         slide,
-        Cm(20.0),
-        Cm(8.9),
-        Cm(11.0),
-        Cm(5.0),
-        "口径说明\n\n图中准确率是 few-shot episode 的 query 集准确率，不是全量测试集精度。\nprototype 更接近 Encoder 表征质量；linear-head 表示 Encoder + 适配头的综合效果。",
-        font_size=12.8,
+        Cm(16.0),
+        Cm(13.2),
+        Cm(14.7),
+        Cm(4.0),
+        "边界提醒\n\n这证明的是“仿真域表征成功”，不是“真实域任务已经完成”。它是地基，不是终点。",
+        font_size=13.0,
         color=TEXT_DARK,
         fill="#FFF7EE",
         line=BORDER,
     )
 
-    slide = add_content_slide(prs, "当前瓶颈与待完成模块", 8)
+    slide = add_content_slide(prs, "阶段二：利用 cGAN 攻克极限数据缺口", 6)
+    add_picture(slide, assets["step2_pipeline"], Cm(0.9), Cm(3.0), Cm(30.3), Cm(8.8))
     add_text_card(
         slide,
+        Cm(1.0),
+        Cm(12.2),
+        Cm(14.8),
+        Cm(3.8),
+        "四步实操重点\n\n靶向低浓度缺口、构建条件输入、学习受控映射、通过物理规则筛选后再入库。",
+        font_size=13.2,
+        color=TEXT_DARK,
+        fill="#ECF3FB",
+        line=BORDER,
+    )
+    add_text_card(
+        slide,
+        Cm(16.2),
+        Cm(12.2),
+        Cm(14.6),
+        Cm(3.8),
+        "边界强调\n\ncGAN 不是替代实验，也不是替代 Step 1；它是建立在物理锚点基础上的 V2.0 放大器。",
+        font_size=13.2,
+        color=TEXT_DARK,
+        fill="#FFF7EE",
+        line=BORDER,
+    )
+    add_text_card(
+        slide,
+        Cm(23.8),
+        Cm(1.1),
+        Cm(6.4),
         Cm(0.9),
-        Cm(3.1),
-        Cm(10.0),
-        Cm(5.8),
-        "当前瓶颈\n\n1. 仿真域与真实域仍有明显 domain gap。\n2. 类别不均衡导致高 K-shot 可用类别减少。\n3. 细粒度 11 类定义增加学习难度。\n4. 支持集过小导致适配头学习不稳定。",
-        font_size=13.0,
+        "当前状态：规划中",
+        font_size=9.8,
+        color="FFFFFF",
+        bold=True,
+        align=PP_ALIGN.CENTER,
+        fill=ORANGE,
+        line=ORANGE,
+    )
+
+    slide = add_content_slide(prs, "为什么第二步值得做：来自当前结果的直接证据", 7)
+    add_picture(slide, assets["fewshot"], Cm(0.9), Cm(3.0), Cm(18.7), Cm(10.9))
+    add_bullets_card(
+        slide,
+        Cm(19.9),
+        Cm(3.0),
+        Cm(11.0),
+        Cm(5.7),
+        "当前观察",
+        [
+            "真实 few-shot 已高于随机基线，但整体 accuracy / macro-F1 仍偏低。",
+            "support 集偏小、类别不均衡、低浓度样本稀缺，会直接导致 prototype 锚点漂移。",
+            "这说明当前瓶颈不在“流程没跑通”，而在“关键区间样本不够稳”。",
+        ],
+        fill="#F7FAFD",
+    )
+    add_bullets_card(
+        slide,
+        Cm(19.9),
+        Cm(9.1),
+        Cm(11.0),
+        Cm(5.2),
+        "Step 2 的潜在收益",
+        [
+            "补齐 LOD 附近最贵、最稀缺的数据空白。",
+            "增强低浓度与过渡区的鲁棒性。",
+            "帮助探索极限检测附近的非线性物理响应。",
+        ],
+        fill="#FFF7EE",
+    )
+    add_text_card(
+        slide,
+        Cm(20.0),
+        Cm(14.8),
+        Cm(10.9),
+        Cm(1.5),
+        "当前结论：Step 1 已落地，Step 2 不是“可有可无”，而是下一阶段最自然的增强方向。",
+        font_size=12.2,
+        color=TEXT_DARK,
+        fill="#ECF3FB",
+        line=BORDER,
+    )
+
+    slide = add_content_slide(prs, "总结：物理先验与条件生成的完美闭环", 8)
+    add_text_card(
+        slide,
+        Cm(1.0),
+        Cm(3.0),
+        Cm(29.8),
+        Cm(1.8),
+        "核心结论：两步架构不是并列替代，而是严格的递进关系。",
+        font_size=17.2,
+        color=TEXT_DARK,
+        bold=True,
+        align=PP_ALIGN.CENTER,
+        fill="#ECF3FB",
+        line=BORDER,
+    )
+    add_text_card(
+        slide,
+        Cm(1.0),
+        Cm(5.5),
+        Cm(9.4),
+        Cm(5.9),
+        "Take-home 1\n\n底座先行：Step 1 先把“数字游标卡尺”做出来，让模型先理解 LSPR 光谱的物理结构。",
+        font_size=13.2,
         color=TEXT_DARK,
         fill="#F7FAFD",
         line=BORDER,
@@ -747,22 +997,22 @@ def build_presentation(assets: Dict[str, Path]) -> None:
     add_text_card(
         slide,
         Cm(11.2),
-        Cm(3.1),
-        Cm(10.0),
-        Cm(5.8),
-        "待完成模块\n\n1. 物理约束判定层（红移方向、饱和边界）。\n2. 可信度与校准输出（可解释不确定性）。\n3. 软件入口对接与稳定推理封装。\n4. 自动日志与报告闭环。",
-        font_size=13.0,
+        Cm(5.5),
+        Cm(9.4),
+        Cm(5.9),
+        "Take-home 2\n\n按需放大：Step 2 只在低浓度 / 弱响应区明显短缺时接入，目标是补齐最贵的短板。",
+        font_size=13.2,
         color=TEXT_DARK,
         fill="#FFF7EE",
         line=BORDER,
     )
     add_text_card(
         slide,
-        Cm(21.5),
-        Cm(3.1),
-        Cm(9.6),
-        Cm(5.8),
-        "学术结论\n\n当前可以确认“已形成可复现实验基线”，但不能宣称“已达到应用级别”。\n下一阶段关键是提升真实任务定义与物理一致性，而非单纯增加脚本数量。",
+        Cm(21.4),
+        Cm(5.5),
+        Cm(9.4),
+        Cm(5.9),
+        "优先级建议\n\nMVP：巩固 Meta-Baseline + 真实 few-shot。\nV2.0：围绕低浓度样本缺口接入 cGAN 放大器。",
         font_size=13.0,
         color=TEXT_DARK,
         fill="#F4FAF9",
@@ -770,67 +1020,15 @@ def build_presentation(assets: Dict[str, Path]) -> None:
     )
     add_text_card(
         slide,
-        Cm(0.9),
-        Cm(9.3),
-        Cm(30.2),
-        Cm(4.8),
-        "建议优先级：先做标签重构/浓度回归 -> 接入物理后验约束 -> 再推进软件集成。这样可以避免将不稳定研究原型过早产品化。",
-        font_size=13.8,
+        Cm(1.0),
+        Cm(12.3),
+        Cm(29.8),
+        Cm(3.3),
+        "Take-home message：没有物理锚点的 GAN 只会制造伪数据；有了物理底座，条件生成才能成为真正可用的低浓度放大器。",
+        font_size=15.0,
         color=TEXT_DARK,
-        fill="#ECF3FB",
-        line=BORDER,
-    )
-
-    slide = add_content_slide(prs, "结论与下一阶段计划", 9)
-    add_bullets_card(
-        slide,
-        Cm(0.8),
-        Cm(3.1),
-        Cm(10.1),
-        Cm(5.8),
-        "本次结论",
-        [
-            "模型 A-B-C-D 闭环已明确。",
-            "Stage A 全部完成并通过验证。",
-            "Stage B 核心流程跑通并有实测结果。",
-            "真实 few-shot 已有信号，但表现仍需提升。",
-        ],
-    )
-    add_bullets_card(
-        slide,
-        Cm(11.3),
-        Cm(3.1),
-        Cm(9.9),
-        Cm(5.8),
-        "下一步计划",
-        [
-            "重构任务定义：并类方案或浓度回归方案。",
-            "引入物理规则判定层和可信度输出。",
-            "在稳定后推进软件集成与自动报告。",
-        ],
-        fill="#F4FAF9",
-    )
-    add_text_card(
-        slide,
-        Cm(21.6),
-        Cm(3.1),
-        Cm(9.5),
-        Cm(5.8),
-        "答辩式一句话总结\n\n项目已从“概念验证”进入“可复现实验阶段”；下一步要解决的是“真实域可靠性”，而不是“继续扩展功能清单”。",
-        font_size=13.0,
-        color=TEXT_DARK,
-        fill="#FFF7EE",
-        line=BORDER,
-    )
-    add_text_card(
-        slide,
-        Cm(0.8),
-        Cm(10.1),
-        Cm(30.2),
-        Cm(3.9),
-        "可复用性说明：本报告由脚本自动生成，可直接迭代为组会版、开题版与答辩版。",
-        font_size=14.0,
-        color=TEXT_DARK,
+        bold=True,
+        align=PP_ALIGN.CENTER,
         fill="#ECF3FB",
         line=BORDER,
     )

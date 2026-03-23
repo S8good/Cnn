@@ -1,11 +1,12 @@
 import argparse
 import csv
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 import sys
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -71,7 +72,9 @@ def resolve_save_dir(save_dir_arg: str) -> Path:
 
 
 def aggregate(rows: List[Dict[str, float]]) -> List[Dict[str, float]]:
-    metrics = ["acc", "macro_f1", "macro_precision", "macro_recall", "query_loss"]
+    metrics = ["acc", "macro_f1", "macro_precision", "macro_recall", "query_loss", "top2_acc"]
+    if any("mae" in r for r in rows):
+        metrics.append("mae")
     by_k: Dict[int, List[Dict[str, float]]] = {}
     for r in rows:
         k = int(r["k_shot"])
@@ -121,6 +124,32 @@ def save_plot(path: Path, summary_rows: List[Dict[str, float]]) -> None:
     plt.close(fig)
 
 
+def parse_label_value(label: str) -> Optional[float]:
+    m = re.search(r"[-+]?\d*\.?\d+", str(label))
+    if not m:
+        return None
+    try:
+        return float(m.group())
+    except ValueError:
+        return None
+
+
+def compute_mae(y_true_raw: np.ndarray, y_pred_raw: np.ndarray, id_to_label: Dict[int, str]) -> Optional[float]:
+    if not id_to_label:
+        return None
+    ids = set(int(x) for x in np.unique(np.concatenate([y_true_raw, y_pred_raw])).tolist())
+    id_to_value: Dict[int, float] = {}
+    for cid in ids:
+        label = id_to_label.get(int(cid), "")
+        val = parse_label_value(label)
+        if val is None:
+            return None
+        id_to_value[int(cid)] = float(val)
+    true_vals = np.asarray([id_to_value[int(x)] for x in y_true_raw.tolist()], dtype=np.float64)
+    pred_vals = np.asarray([id_to_value[int(x)] for x in y_pred_raw.tolist()], dtype=np.float64)
+    return float(np.mean(np.abs(true_vals - pred_vals)))
+
+
 def main() -> None:
     args = parse_args()
     k_shots = parse_k_shots(args.k_shots)
@@ -133,7 +162,7 @@ def main() -> None:
         raise FileNotFoundError(f"Encoder not found: {encoder_path}")
 
     print("Loading data and encoder...", flush=True)
-    spectra, labels, _ = load_real_dataset(data_dir)
+    spectra, labels, id_to_label = load_real_dataset(data_dir)
     encoder = ResNet1DEncoder(embedding_dim=128)
     encoder.load_state_dict(torch.load(str(encoder_path), map_location="cpu"))
     encoder.to(device)
@@ -165,7 +194,7 @@ def main() -> None:
             query_y = labels[query_idx]
 
             if args.mode == "prototype":
-                scores, _ = run_prototype_mode(
+                scores, pred_raw = run_prototype_mode(
                     support_emb=support_emb,
                     support_y_raw=support_y,
                     query_emb=query_emb,
@@ -175,7 +204,7 @@ def main() -> None:
                 )
             else:
                 linear_args = SimpleNamespace(lr=args.lr, weight_decay=args.weight_decay, epochs=args.epochs)
-                scores, _, _, _ = run_linear_head_mode(
+                scores, _, pred_raw, _ = run_linear_head_mode(
                     support_emb=support_emb,
                     support_y_raw=support_y,
                     query_emb=query_emb,
@@ -184,6 +213,9 @@ def main() -> None:
                     args=linear_args,
                     device=device,
                 )
+            mae = compute_mae(query_y, pred_raw, id_to_label)
+            if mae is not None:
+                scores["mae"] = float(mae)
 
             row = {
                 "k_shot": int(k),
@@ -195,9 +227,12 @@ def main() -> None:
                 "macro_f1": float(scores["macro_f1"]),
                 "macro_precision": float(scores["macro_precision"]),
                 "macro_recall": float(scores["macro_recall"]),
+                "top2_acc": float(scores.get("top2_acc", 0.0)),
                 "query_loss": float(scores["query_loss"]),
                 "split_seed": int(split_seed),
             }
+            if "mae" in scores:
+                row["mae"] = float(scores["mae"])
             episode_rows.append(row)
 
             if ep == 0 or (ep + 1) % max(1, args.episodes // 2) == 0 or ep + 1 == args.episodes:
