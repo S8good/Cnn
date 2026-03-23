@@ -8,6 +8,7 @@ data/pretrain_full/pretrain_spectra.npy
 outputs/_tmp_eval_*/
 outputs/fewshot_bundle_cea_v1/bundle_compare_extra.png
 outputs/exp_*/
-
+outputs/
+!outputs/.gitkeep
 # Local scratch notes
 **/chat.md
