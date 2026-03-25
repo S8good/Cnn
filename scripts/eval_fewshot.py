@@ -26,10 +26,19 @@ from lspr.model import ResNet1DEncoder
 import torch
 
 
+def find_default_encoder_path() -> str:
+    stage2_root = PROJECT_ROOT / "outputs" / "stage2_domain_pretrain"
+    if stage2_root.exists():
+        candidates = sorted(stage2_root.glob("run_*/encoder_stage2_best.pth"))
+        if candidates:
+            return str(candidates[-1])
+    return str(PROJECT_ROOT / "outputs" / "exp_20260324_real20260204_v1" / "pretrain" / "enc_s2026" / "lspr_encoder_v1.pth")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Evaluate Stage-B few-shot performance over multiple episodes")
     parser.add_argument("--data-dir", type=str, default="data/real_fewshot")
-    parser.add_argument("--encoder-path", type=str, required=True)
+    parser.add_argument("--encoder-path", type=str, default=find_default_encoder_path())
     parser.add_argument("--mode", type=str, default="prototype", choices=["prototype", "linear_head"])
     parser.add_argument("--n-way", type=int, default=0, help="0 means all classes")
     parser.add_argument("--k-shots", type=str, default="1,3,5", help="Comma-separated k values")
